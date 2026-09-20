@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Карта прокачки</title>
+<meta name="theme-color" content="#14101F" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Карта прокачки" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rubik:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg-deep:#14101F;
+    --bg-panel:#1E1830;
+    --bg-panel-alt:#251E3D;
+    --border-arcane:#3B3157;
+    --text-main:#EDE7F6;
+    --text-soft:#B4A9CC;
+    --gold:#E8B94A;
+    --ru:#E0596B;
+    --lit:#9B6BD6;
+    --math:#4FA3D1;
+    --cs:#4FCB8F;
+    --radius:16px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: radial-gradient(circle at 18% -10%, #2A2148 0%, #14101F 55%);
+    color:var(--text-main);
+    font-family:'Rubik',system-ui,sans-serif;
+    line-height:1.45;
+    padding:20px 14px 60px;
+    min-height:100vh;
+    padding-top:calc(20px + env(safe-area-inset-top, 0px));
+    padding-bottom:calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+  #app{max-width:620px;margin:0 auto;}
+
+  h1,h2,h3{font-family:'Cinzel',Georgia,serif;margin:0;color:var(--text-main);font-weight:700;}
+
+  button, input, select{font-family:inherit;font-size:1rem;}
+  button{cursor:pointer;}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important;} }
+
+  input[type=text], input[type=number], select{
+    background:var(--bg-panel-alt); border:1px solid var(--border-arcane); color:var(--text-main);
+    border-radius:8px; padding:10px 11px; width:100%;
+  }
+  input[type=color]{width:48px;height:42px;border:1px solid var(--border-arcane);border-radius:8px;background:var(--bg-panel-alt);padding:2px;}
+  button{background:var(--gold);color:#241A08;border:none;border-radius:10px;padding:11px 16px;font-weight:700;}
+  button.secondary, .backup-actions button{background:var(--bg-panel-alt);color:var(--text-main);border:1px solid var(--border-arcane);}
+
+  .form-stack{display:flex;flex-direction:column;gap:10px;margin-top:6px;}
+  .form-stack label{display:flex;flex-direction:column;gap:4px;font-size:0.8rem;color:var(--text-soft);}
+  .two-col{display:flex;gap:10px;}
+  .two-col label, .two-col > input{flex:1;}
+  .row-inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+  /* ---------- save indicator ---------- */
+  .save-indicator:empty{display:none;}
+  .save-indicator{
+    font-size:0.82rem;color:#F3D9A0;background:#3A2A12;border:1px solid var(--gold);
+    border-radius:10px;padding:9px 12px;margin-bottom:14px;
+  }
+  .save-indicator button{margin-left:8px;padding:4px 10px;font-size:0.78rem;}
+
+  /* ---------- header ---------- */
+  .hero{display:flex;align-items:center;gap:14px;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--border-arcane);}
+  .emblem{width:50px;height:50px;color:var(--gold);flex:none;}
+  .hero h1{font-size:1.5rem;letter-spacing:0.02em;}
+  .hero p{margin:4px 0 0;color:var(--text-soft);font-size:0.86rem;max-width:44ch;}
+
+  /* ---------- tabs ---------- */
+  .tabbar{display:flex;gap:2px;overflow-x:auto;padding-bottom:8px;margin-bottom:18px;border-bottom:1px solid var(--border-arcane);-webkit-overflow-scrolling:touch;}
+  .tab-btn{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;border:none;color:var(--text-soft);padding:8px 13px;border-bottom:2px solid transparent;font-weight:600;font-size:0.72rem;border-radius:0;}
+  .tab-btn .tab-icon{font-size:1.2rem;}
+  .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+  .panel{background:var(--bg-panel);border:1px solid var(--border-arcane);border-radius:var(--radius);padding:16px;margin-bottom:16px;box-shadow:0 4px 18px rgba(0,0,0,0.35);}
+  .panel h2{font-size:1.08rem;letter-spacing:0.01em;}
+  .panel p.hint{color:var(--text-soft);font-size:0.84rem;margin:4px 0 12px;}
+  .panel .empty{color:var(--text-soft);font-style:italic;font-size:0.88rem;}
+
+  .name-row{margin-bottom:14px;}
+  .name-row input{font-family:'Cinzel',serif;font-size:1.05rem;font-weight:600;text-align:center;}
+
+  /* ---------- rank badge ---------- */
+  .rank-badge{position:relative;text-align:center;padding:18px 14px;margin-bottom:16px;border-radius:var(--radius);background:var(--bg-panel);border:2px solid var(--rank-color);box-shadow:0 0 22px -4px var(--rank-color);}
+  .rank-badge .rank-tier{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.14em;color:var(--rank-color);font-weight:700;}
+  .rank-badge .rank-name{font-size:1.28rem;color:var(--text-main);margin:5px 0;}
+  .rank-badge .rank-level{font-size:0.82rem;color:var(--text-soft);}
+  .rank-badge.legendary{
+    border:2px solid transparent;
+    background-image: linear-gradient(var(--bg-panel), var(--bg-panel)), conic-gradient(from 0deg, #FFD700, #FF8A65, #4FCB8F, #4FA3D1, #9B6BD6, #FFD700);
+    background-origin: border-box; background-clip: padding-box, border-box;
+    animation: rankspin 8s linear infinite;
+  }
+  @keyframes rankspin{ to { filter: hue-rotate(360deg); } }
+
+  /* ---------- stats ---------- */
+  .stat-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;}
+  .stat{flex:1 1 110px;background:var(--bg-panel);border:1px solid var(--border-arcane);border-radius:var(--radius);padding:10px 12px;text-align:center;}
+  .stat .num{font-family:'Cinzel',serif;font-weight:700;font-size:1.3rem;color:var(--gold);}
+  .stat .label{font-size:0.74rem;color:var(--text-soft);}
+
+  .streak-btn{display:block;width:100%;margin-bottom:18px;padding:13px;background:linear-gradient(135deg,var(--gold),#C9932F);border:none;border-radius:var(--radius);color:#241A08;font-weight:700;}
+  .streak-btn:active{transform:scale(0.99);}
+
+  /* ---------- branch mini list (overview) ---------- */
+  .branch-mini-list{display:flex;flex-direction:column;gap:8px;}
+  .branch-mini{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-panel-alt);border-radius:10px;border-left:3px solid var(--bc);}
+  .branch-mini .bm-icon{width:20px;height:20px;color:var(--bc);flex:none;display:flex;}
+  .branch-mini .bm-label{flex:1;font-size:0.92rem;}
+  .branch-mini .bm-level{font-family:'Cinzel',serif;font-weight:700;color:var(--bc);}
+
+  /* ---------- branch cards (Ветви tab) ---------- */
+  .branch{background:var(--bg-panel);border:1px solid var(--border-arcane);border-left:4px solid var(--branch);border-radius:var(--radius);padding:16px;margin-bottom:16px;}
+  .branch-top{display:flex;align-items:center;gap:10px;}
+  .branch-icon{width:26px;height:26px;color:var(--branch);flex:none;display:flex;align-items:center;}
+  .emoji-icon{font-size:1.3rem;line-height:1;}
+  .branch-top h2{flex:1;font-size:1.05rem;}
+  .level-badge{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;color:var(--branch);border:2px solid var(--branch);background:var(--bg-panel-alt);flex:none;}
+  .branch-del{background:transparent;border:none;color:var(--text-soft);font-size:1.15rem;padding:2px 4px;}
+  .bar-track{height:9px;border-radius:6px;background:var(--bg-panel-alt);border:1px solid var(--border-arcane);overflow:hidden;margin-top:10px;}
+  .bar-fill{height:100%;border-radius:6px;background:var(--branch);transition:width .4s ease;}
+  .bar-caption{font-size:0.76rem;color:var(--text-soft);margin-top:4px;}
+
+  .modules{margin-top:14px;border-top:1px dashed var(--border-arcane);padding-top:12px;}
+  .modules h3{font-size:0.82rem;color:var(--text-soft);margin-bottom:8px;font-family:'Rubik';font-weight:600;}
+  .module-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:0.9rem;}
+  .module-row input{width:18px;height:18px;accent-color:var(--cs);}
+  .module-row.done label{color:var(--text-soft);text-decoration:line-through;}
+
+  .add-branch-panel .row-inline input[type=text]{flex:1 1 140px;}
+
+  /* ---------- achievements ---------- */
+  .ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:4px;}
+  .ach-badge{border:1px solid var(--border-arcane);border-radius:10px;padding:10px;text-align:center;background:var(--bg-panel-alt);}
+  .ach-badge.unlocked{border-color:var(--gold);box-shadow:0 0 12px -4px var(--gold);}
+  .ach-badge .trophy{font-size:1.3rem;}
+  .ach-badge .aname{font-weight:600;font-size:0.84rem;margin-top:4px;color:var(--text-main);}
+  .ach-badge.locked .aname{color:var(--text-soft);}
+  .ach-badge .adesc{font-size:0.72rem;color:var(--text-soft);margin-top:2px;}
+  .ach-badge .axp{font-size:0.74rem;color:var(--gold);margin-top:4px;font-weight:600;}
+
+  /* ---------- shop ---------- */
+  .shop-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border-arcane);}
+  .shop-item:first-of-type{border-top:none;}
+  .shop-item .name{flex:1;font-weight:500;}
+  .shop-item .cost{color:var(--gold);font-weight:700;font-family:'Cinzel',serif;}
+  .shop-item button{padding:7px 12px;font-size:0.86rem;}
+  .shop-item button:disabled{opacity:0.35;cursor:not-allowed;}
+  .shop-item .del{background:transparent;color:var(--text-soft);border:none;font-size:1.1rem;padding:0 4px;}
+
+  /* ---------- journal ---------- */
+  .journal-list{list-style:none;margin:0;padding:0;}
+  .journal-list li{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--border-arcane);font-size:0.88rem;}
+  .journal-list li:first-child{border-top:none;}
+  .journal-list .delta{font-weight:700;font-family:'Cinzel',serif;white-space:nowrap;color:var(--gold);font-size:0.8rem;}
+
+  /* ---------- backup ---------- */
+  .backup-actions{display:flex;gap:10px;flex-wrap:wrap;}
+  .backup-actions button{flex:1 1 150px;}
+  .backup-status{margin:10px 0 0;font-size:0.85rem;color:var(--text-soft);min-height:1.2em;}
+
+  footer{text-align:center;margin-top:6px;}
+  footer button{background:transparent;border:none;color:var(--text-soft);text-decoration:underline;font-size:0.82rem;padding:8px;}
+</style>
+</head>
+<body>
+<div id="app">Загрузка карты…</div>
+
+<script>
+const STORAGE_KEY = 'karta-prokachki-v2';
+const CURRENCY_SYMBOL = '◈';
+
+const DEFAULT_BRANCHES = [
+  {id:'ru',   label:'Русский язык', color:'#E0596B', icon:'svg:quill'},
+  {id:'lit',  label:'Литература',   color:'#9B6BD6', icon:'svg:book'},
+  {id:'math', label:'Математика',   color:'#4FA3D1', icon:'svg:compass'},
+  {id:'cs',   label:'Информатика',  color:'#4FCB8F', icon:'svg:chip', hasModules:true}
+];
+
+const MODULE_NAMES = [
+  'Знакомство и безопасность','Файлы и папки','Текст и печать',
+  'Интернет и поиск','Картинки и презентации','Scratch и финальный проект'
+];
+
+const RANKS = [
+  { min:0,  max:0,   name:'Обычный',                 tier:'Обычный',      color:'#9E9E9E' },
+  { min:1,  max:5,   name:'Новичок Академии',         tier:'Обычный',      color:'#B0BEC5' },
+  { min:6,  max:10,  name:'Любопытный Искатель',      tier:'Обычный',      color:'#90A4AE' },
+  { min:11, max:15,  name:'Ученик Свитков',           tier:'Обычный',      color:'#78909C' },
+  { min:16, max:20,  name:'Хранитель Азбуки',         tier:'Обычный',      color:'#CFD8DC' },
+  { min:21, max:25,  name:'Заклинатель Букв',         tier:'Необычный',    color:'#A5D6A7' },
+  { min:26, max:30,  name:'Мастер Рун',               tier:'Необычный',    color:'#81C784' },
+  { min:31, max:35,  name:'Чтец Пророчеств',          tier:'Необычный',    color:'#66BB6A' },
+  { min:36, max:40,  name:'Хранитель Формул',         tier:'Необычный',    color:'#4CAF50' },
+  { min:41, max:45,  name:'Рыцарь Знаний',            tier:'Редкий',       color:'#81D4FA' },
+  { min:46, max:50,  name:'Страж Мудрости',           tier:'Редкий',       color:'#4FC3F7' },
+  { min:51, max:55,  name:'Волшебник Слова',          tier:'Редкий',       color:'#29B6F6' },
+  { min:56, max:60,  name:'Чародей Чисел',            tier:'Редкий',       color:'#039BE5' },
+  { min:61, max:65,  name:'Архивариус Тайн',          tier:'Эпический',    color:'#CE93D8' },
+  { min:66, max:70,  name:'Мастер Заклинаний',        tier:'Эпический',    color:'#BA68C8' },
+  { min:71, max:75,  name:'Хранитель Легенд',         tier:'Эпический',    color:'#AB47BC' },
+  { min:76, max:80,  name:'Верховный Маг Академии',   tier:'Эпический',    color:'#8E24AA' },
+  { min:81, max:85,  name:'Мудрец Пяти Королевств',   tier:'Легендарный',  color:'#FFD54F' },
+  { min:86, max:90,  name:'Провидец Знаний',          tier:'Легендарный',  color:'#FFC107' },
+  { min:91, max:95,  name:'Великий Архимаг',          tier:'Легендарный',  color:'#FFA000' },
+  { min:96, max:Infinity, name:'Легенда Академии Чудес', tier:'Легендарный', color:'#FFD700', legendary:true }
+];
+
+const ACHIEVEMENT_CATALOG = [
+  { id:'first-quest', name:'Первый шаг', desc:'Выполни первый квест', xp:15, adamant:15,
+    check: s => s.stats.quests >= 1 },
+  { id:'boss-3', name:'Победитель драконов', desc:'Победи боссов 3 раза', xp:30, adamant:30,
+    check: s => s.stats.bosses >= 3 },
+  { id:'streak-7', name:'Марафонец', desc:'Занимайся 7 дней подряд', xp:40, adamant:40,
+    check: s => s.streak.count >= 7 },
+  { id:'level-5', name:'Мастер уровня', desc:'Достигни 5 уровня в любой ветке', xp:30, adamant:30,
+    check: s => s.branchOrder.some(id => branchLevelInfo(s.branches[id].xp).level >= 5) },
+  { id:'all-3', name:'Коллекционер знаний', desc:'Достигни 3 уровня во всех ветках', xp:60, adamant:60,
+    check: s => s.branchOrder.length>0 && s.branchOrder.every(id => branchLevelInfo(s.branches[id].xp).level >= 3) },
+  { id:'cs-complete', name:'Знаток информатики', desc:'Пройди все 6 модулей информатики', xp:50, adamant:50,
+    check: s => s.modules.every(Boolean) },
+  { id:'first-buy', name:'Первая покупка', desc:'Обменяй Адамант в лавке', xp:10, adamant:10,
+    check: s => s.stats.purchases >= 1 },
+  { id:'legend', name:'Легенда отряда', desc:'Достигни 20 уровня персонажа', xp:100, adamant:100,
+    check: s => characterLevel(s) >= 20 }
+];
+
+const TABS = [
+  {id:'overview', label:'Обзор', icon:'🏰'},
+  {id:'quests', label:'Квесты', icon:'⚔️'},
+  {id:'branches', label:'Ветви', icon:'🌿'},
+  {id:'shop', label:'Лавка', icon:'🛒'},
+  {id:'achievements', label:'Награды', icon:'🏆'},
+  {id:'journal', label:'Журнал', icon:'📜'}
+];
+
+let state = null;
+let activeTab = 'overview';
+let saveFailedFlag = false;
+let backupStatusMsg = '';
+let backupStatusTimer = null;
+
+function defaultState(){
+  const branches = {};
+  const branchOrder = [];
+  DEFAULT_BRANCHES.forEach(b=>{
+    branches[b.id] = {label:b.label, color:b.color, icon:b.icon, xp:0, hasModules: !!b.hasModules};
+    branchOrder.push(b.id);
+  });
+  return {
+    name:'',
+    branches, branchOrder,
+    currency:0,
+    bonusXp:0,
+    stats:{ quests:0, bosses:0, purchases:0 },
+    streak:{count:0,last:null},
+    modules:[false,false,false,false,false,false],
+    shop:[
+      {id:1, name:'Наклейка в альбом', cost:50},
+      {id:2, name:'20 минут мультиков', cost:80},
+      {id:3, name:'Выбрать фильм на вечер', cost:120},
+      {id:4, name:'Поход в парк или кино', cost:300}
+    ],
+    achievements:[],
+    log:[]
+  };
+}
+
+function normalizeState(loaded){
+  const d = defaultState();
+  const s = (loaded && typeof loaded === 'object') ? loaded : {};
+  if(s.branches && typeof s.branches === 'object' && Object.keys(s.branches).length){
+    const order = Array.isArray(s.branchOrder) ? s.branchOrder.filter(id=>s.branches[id]) : Object.keys(s.branches);
+    const branches = {};
+    order.forEach(id=>{
+      const b = s.branches[id] || {};
+      const legacy = DEFAULT_BRANCHES.find(db=>db.id===id);
+      branches[id] = {
+        label: b.label || (legacy?legacy.label:id),
+        color: b.color || (legacy?legacy.color:'#9B6BD6'),
+        icon: b.icon || (legacy?legacy.icon:'✨'),
+        xp: typeof b.xp === 'number' ? b.xp : 0,
+        hasModules: typeof b.hasModules === 'boolean' ? b.hasModules : (legacy ? !!legacy.hasModules : false)
+      };
+    });
+    s.branches = branches;
+    s.branchOrder = order;
+  }else{
+    s.branches = d.branches;
+    s.branchOrder = d.branchOrder;
+  }
+  s.currency = typeof s.currency === 'number' ? s.currency : 0;
+  s.bonusXp = typeof s.bonusXp === 'number' ? s.bonusXp : 0;
+  s.stats = { ...d.stats, ...(s.stats||{}) };
+  s.streak = s.streak || {...d.streak};
+  s.modules = (Array.isArray(s.modules) && s.modules.length===6) ? s.modules : d.modules;
+  s.shop = Array.isArray(s.shop) ? s.shop : d.shop;
+  s.achievements = Array.isArray(s.achievements) ? s.achievements.map(a=>({
+    ...a, desc:a.desc||'', adamant: typeof a.adamant==='number' ? a.adamant : (a.xp||0)
+  })) : [];
+  s.log = Array.isArray(s.log) ? s.log : [];
+  s.name = s.name || '';
+  return s;
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    state = raw ? normalizeState(JSON.parse(raw)) : defaultState();
+  }catch(e){
+    state = defaultState();
+    saveFailedFlag = true;
+  }
+  checkAchievements();
+  render();
+  saveState();
+}
+
+function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if(saveFailedFlag){ saveFailedFlag = false; updateSaveIndicator(); }
+  }catch(e){
+    saveFailedFlag = true;
+    updateSaveIndicator();
+  }
+}
+
+function updateSaveIndicator(){
+  const el = document.getElementById('save-indicator');
+  if(!el) return;
+  el.innerHTML = saveFailedFlag
+    ? 'Не удалось сохранить в память браузера. Сохраняй резервную копию во вкладке «Журнал», чтобы не потерять прогресс.'
+    : '';
+}
+
+function branchLevelInfo(xp){
+  const level = Math.floor(xp/100)+1;
+  const cur = xp % 100;
+  return {level, cur, target:100};
+}
+
+function totalCharacterXp(s){
+  return s.branchOrder.reduce((sum,id)=> sum + (s.branches[id] ? s.branches[id].xp : 0), 0) + (s.bonusXp||0);
+}
+function characterLevel(s){
+  return Math.floor(totalCharacterXp(s)/100);
+}
+function getRank(level){
+  for(const r of RANKS){ if(level>=r.min && level<=r.max) return r; }
+  return RANKS[RANKS.length-1];
+}
+
+function todayStr(d=new Date()){
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+
+function addLog(entry){
+  state.log.unshift({ id:Date.now()+Math.random(), date:todayStr(), ...entry });
+  state.log = state.log.slice(0,30);
+}
+
+function afterAction(){
+  checkAchievements();
+  saveState();
+  render();
+}
+
+function checkAchievements(){
+  const unlockedIds = new Set(state.achievements.map(a=>a.id));
+  ACHIEVEMENT_CATALOG.forEach(def=>{
+    if(unlockedIds.has(def.id)) return;
+    if(def.check(state)){
+      const entry = { id:def.id, name:def.name, desc:def.desc, xp:def.xp, adamant:def.adamant, date:todayStr() };
+      state.achievements.push(entry);
+      state.bonusXp += entry.xp;
+      state.currency += entry.adamant;
+      addLog({type:'achievement', text:`Достижение: «${def.name}»`, xpDelta:entry.xp, currencyDelta:entry.adamant});
+    }
+  });
+}
+
+function switchTab(id){ activeTab = id; render(); }
+
+function addEntry(branchId, name, xp, adamant, isBoss){
+  if(!state.branches[branchId]) return;
+  if(!name || !name.trim()) return;
+  xp = Math.max(0, Math.round(Number(xp)||0));
+  adamant = Math.max(0, Math.round(Number(adamant)||0));
+  state.branches[branchId].xp += xp;
+  state.currency += adamant;
+  if(isBoss) state.stats.bosses += 1; else state.stats.quests += 1;
+  const label = state.branches[branchId].label;
+  addLog({type:isBoss?'boss':'quest', text:`${isBoss?'⚔ Босс — ':''}${name.trim()} (${label})`, xpDelta:xp, currencyDelta:adamant});
+  afterAction();
+}
+
+function toggleModule(i){
+  if(!state.branches['cs']) return;
+  const done = !state.modules[i];
+  state.modules[i] = done;
+  const delta = done ? 50 : -50;
+  state.branches['cs'].xp = Math.max(0, state.branches['cs'].xp + delta);
+  state.currency = Math.max(0, state.currency + delta);
+  addLog({
+    type:'module',
+    text: done ? `Модуль пройден: «${MODULE_NAMES[i]}»` : `Отменено: «${MODULE_NAMES[i]}»`,
+    xpDelta:delta, currencyDelta:delta
+  });
+  afterAction();
+}
+
+function addBranch(name, color, icon){
+  if(!name || !name.trim()) return;
+  const id = 'b'+Date.now();
+  state.branches[id] = { label:name.trim(), color: color || '#9B6BD6', icon: (icon && icon.trim()) ? icon.trim() : '✨', xp:0, hasModules:false };
+  state.branchOrder.push(id);
+  saveState(); render();
+}
+
+function removeBranch(id){
+  if(state.branchOrder.length <= 1){ window.alert('Должна остаться хотя бы одна ветвь.'); return; }
+  if(!window.confirm('Удалить эту ветвь и весь её прогресс?')) return;
+  delete state.branches[id];
+  state.branchOrder = state.branchOrder.filter(x=>x!==id);
+  saveState(); render();
+}
+
+function buyItem(id){
+  const item = state.shop.find(s=>s.id===id);
+  if(!item || state.currency < item.cost) return;
+  state.currency -= item.cost;
+  state.stats.purchases += 1;
+  addLog({type:'purchase', text:`Обменяно на «${item.name}»`, xpDelta:0, currencyDelta:-item.cost});
+  afterAction();
+}
+
+function removeReward(id){
+  state.shop = state.shop.filter(s=>s.id!==id);
+  saveState(); render();
+}
+
+function addReward(name, cost){
+  if(!name || !name.trim() || !cost || cost<=0) return;
+  state.shop.push({id:Date.now(), name:name.trim(), cost:Math.round(cost)});
+  saveState(); render();
+}
+
+function addCustomAchievement(name, desc, xp, adamant){
+  if(!name || !name.trim()) return;
+  xp = Math.max(0, Math.round(Number(xp)||0));
+  adamant = Math.max(0, Math.round(Number(adamant)||0));
+  const entry = { id:'custom-'+Date.now(), name:name.trim(), desc:(desc||'').trim(), xp, adamant, date:todayStr() };
+  state.achievements.push(entry);
+  state.bonusXp += xp;
+  state.currency += adamant;
+  addLog({type:'achievement', text:`Достижение: «${entry.name}»`, xpDelta:xp, currencyDelta:adamant});
+  afterAction();
+}
+
+function markStreak(){
+  const today = todayStr();
+  if(state.streak.last === today) return;
+  const y = new Date(); y.setDate(y.getDate()-1);
+  state.streak.count = (state.streak.last === todayStr(y)) ? state.streak.count+1 : 1;
+  state.streak.last = today;
+  addLog({type:'streak', text:'Отмечен день занятий', xpDelta:0, currencyDelta:0});
+  afterAction();
+}
+
+function setName(v){ state.name = v; saveState(); }
+
+function resetAll(){
+  if(!window.confirm('Точно обнулить весь прогресс? Это нельзя отменить.')) return;
+  state = defaultState();
+  saveState(); render();
+}
+
+/* ---------------- backup: export / import ---------------- */
+function setBackupStatus(msg){
+  backupStatusMsg = msg;
+  updateBackupStatus();
+  clearTimeout(backupStatusTimer);
+  backupStatusTimer = setTimeout(()=>{ backupStatusMsg=''; updateBackupStatus(); }, 6000);
+}
+function updateBackupStatus(){
+  const el = document.getElementById('backup-status');
+  if(el) el.textContent = backupStatusMsg;
+}
+
+async function exportBackup(){
+  try{
+    const downloads = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null;
+    const dataStr = JSON.stringify(state, null, 2);
+    if(downloads){
+      await downloads.save({ filename:`karta-prokachki-${todayStr()}.json`, data: dataStr });
+      setBackupStatus('Копия сохранена.');
+      return;
+    }
+    // fallback for contexts without the downloads capability (e.g. opened as a raw local file)
+    const blob = new Blob([dataStr], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `karta-prokachki-${todayStr()}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setBackupStatus('Копия сохранена в загрузки.');
+  }catch(e){
+    if(e && e.code === 'declined') return;
+    setBackupStatus('Не получилось сохранить копию.');
+  }
+}
+
+function triggerImport(){
+  const input = document.getElementById('import-file-input');
+  if(input) input.click();
+}
+
+function handleImportFile(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    let parsed;
+    try{ parsed = JSON.parse(e.target.result); }
+    catch(err){ setBackupStatus('Не получилось прочитать файл — это не похоже на резервную копию.'); return; }
+    if(!window.confirm('Загрузить эту копию? Текущий прогресс будет заменён.')) return;
+    state = normalizeState(parsed);
+    checkAchievements();
+    saveState();
+    render();
+    setBackupStatus('Резервная копия загружена.');
+  };
+  reader.onerror = () => setBackupStatus('Не получилось прочитать файл.');
+  reader.readAsText(file);
+  input.value = '';
+}
+
+/* ---------------- icons ---------------- */
+function iconEmblem(){
+  return `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="1.5"/>
+    <path d="M50 8 L58 46 L50 50 L42 46 Z" fill="currentColor"/>
+    <path d="M50 92 L42 54 L50 50 L58 54 Z" fill="currentColor" opacity="0.5"/>
+    <path d="M8 50 L46 42 L50 50 L46 58 Z" fill="currentColor" opacity="0.5"/>
+    <path d="M92 50 L54 58 L50 50 L54 42 Z" fill="currentColor" opacity="0.8"/>
+    <circle cx="50" cy="50" r="3" fill="currentColor"/>
+  </svg>`;
+}
+function iconQuill(){
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 19c4-1 7-3 9-6 2-3 3-6 3-9-3 0-6 1-9 3-3 2-5 5-6 9 1 1 2 2 3 3z"/>
+    <path d="M5 19l4-4"/><circle cx="4.3" cy="19.7" r=".8" fill="currentColor" stroke="none"/>
+  </svg>`;
+}
+function iconBook(){
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 5c2-1.5 5-1.5 8 0v14c-3-1.5-6-1.5-8 0z"/>
+    <path d="M20 5c-2-1.5-5-1.5-8 0v14c3-1.5 6-1.5 8 0z"/>
+  </svg>`;
+}
+function iconCompass(){
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="5" r="1.6"/><path d="M12 6.6 L6 20 M12 6.6 L18 20 M8.5 15h7"/>
+  </svg>`;
+}
+function iconChip(){
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="6" height="6" rx="1"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/>
+    <circle cx="12" cy="3" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="21" r="1.1" fill="currentColor" stroke="none"/>
+    <circle cx="3" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="21" cy="12" r="1.1" fill="currentColor" stroke="none"/>
+  </svg>`;
+}
+function branchIconHtml(b){
+  if(b.icon && b.icon.indexOf('svg:')===0){
+    const key = b.icon.slice(4);
+    const fn = {quill:iconQuill, book:iconBook, compass:iconCompass, chip:iconChip}[key];
+    if(fn) return fn();
+  }
+  return `<span class="emoji-icon">${b.icon || '✨'}</span>`;
+}
+
+/* ---------------- tab content builders ---------------- */
+function tabBarHtml(){
+  return `<div class="tabbar">${TABS.map(t=>`
+    <button class="tab-btn ${activeTab===t.id?'active':''}" onclick="switchTab('${t.id}')">
+      <span class="tab-icon">${t.icon}</span><span class="tab-label">${t.label}</span>
+    </button>`).join('')}</div>`;
+}
+
+function rankBadgeHtml(){
+  const lvl = characterLevel(state);
+  const rank = getRank(lvl);
+  return `<div class="rank-badge ${rank.legendary?'legendary':''}" style="--rank-color:${rank.color}">
+    <div class="rank-tier">${rank.tier}</div>
+    <div class="rank-name">${rank.name}</div>
+    <div class="rank-level">Уровень ${lvl}</div>
+  </div>`;
+}
+
+function branchMiniListHtml(){
+  return `<div class="branch-mini-list">
+    ${state.branchOrder.map(id=>{
+      const b = state.branches[id]; if(!b) return '';
+      const {level} = branchLevelInfo(b.xp);
+      return `<div class="branch-mini" style="--bc:${b.color}">
+        <span class="bm-icon">${branchIconHtml(b)}</span>
+        <span class="bm-label">${b.label}</span>
+        <span class="bm-level">${level}</span>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function achUnlockedCount(){
+  return state.achievements.filter(a=>!a.id.startsWith('custom-')).length;
+}
+
+function overviewTabHtml(){
+  return `
+    <div class="name-row">
+      <input type="text" placeholder="Имя искателя" value="${state.name||''}" onchange="setName(this.value)" />
+    </div>
+    ${rankBadgeHtml()}
+    <div class="stat-bar">
+      <div class="stat"><div class="num">${state.currency}${CURRENCY_SYMBOL}</div><div class="label">Адамант</div></div>
+      <div class="stat"><div class="num">${state.streak.count}🔥</div><div class="label">Дней подряд</div></div>
+      <div class="stat"><div class="num">${achUnlockedCount()}/${ACHIEVEMENT_CATALOG.length}</div><div class="label">Достижений</div></div>
+    </div>
+    <button class="streak-btn" onclick="markStreak()">Отметить сегодняшний квест</button>
+    <div class="panel">
+      <h2>Ветви</h2>
+      ${branchMiniListHtml()}
+    </div>`;
+}
+
+function todayEntriesHtml(){
+  const todays = state.log.filter(e=>e.date===todayStr());
+  if(todays.length===0) return `<p class="empty">Пока пусто — запиши первый подвиг дня.</p>`;
+  return `<ul class="journal-list">${todays.map(e=>`
+    <li><span>${e.text}</span><span class="delta">${e.xpDelta?('+'+e.xpDelta+' XP'):''} ${e.currencyDelta?('+'+e.currencyDelta+CURRENCY_SYMBOL):''}</span></li>`).join('')}</ul>`;
+}
+
+function questsTabHtml(){
+  const options = state.branchOrder.map(id=>`<option value="${id}">${state.branches[id].label}</option>`).join('');
+  return `
+  <div class="panel">
+    <h2>Записать подвиг</h2>
+    <p class="hint">Выбери ветвь, впиши что было сделано, и сама назначь награду.</p>
+    <form class="form-stack" onsubmit="event.preventDefault(); const f=this;
+      addEntry(f.qbranch.value, f.qname.value, f.qxp.value, f.qadamant.value, f.qtype.value==='boss');
+      f.qname.value=''; f.qxp.value=10; f.qadamant.value=10;">
+      <label>Ветвь <select name="qbranch">${options}</select></label>
+      <label>Тип
+        <select name="qtype">
+          <option value="quest">Обычный квест</option>
+          <option value="boss">⚔ Битва с боссом</option>
+        </select>
+      </label>
+      <label>Что сделано <input type="text" name="qname" placeholder="Например: прочитала главу" required /></label>
+      <div class="two-col">
+        <label>XP <input type="number" name="qxp" value="10" min="0" required /></label>
+        <label>Адамант <input type="number" name="qadamant" value="10" min="0" required /></label>
+      </div>
+      <button type="submit">Записать подвиг</button>
+    </form>
+  </div>
+  <div class="panel">
+    <h2>Сегодня</h2>
+    ${todayEntriesHtml()}
+  </div>`;
+}
+
+function modulesBlockHtml(){
+  return `<div class="modules">
+    <h3>Путь модулей</h3>
+    ${MODULE_NAMES.map((n,i)=>`
+      <div class="module-row ${state.modules[i]?'done':''}">
+        <input type="checkbox" id="mod${i}" ${state.modules[i]?'checked':''} onchange="toggleModule(${i})" />
+        <label for="mod${i}">${n}</label>
+      </div>`).join('')}
+  </div>`;
+}
+
+function branchCardHtml(id){
+  const b = state.branches[id];
+  if(!b) return '';
+  const {level, cur, target} = branchLevelInfo(b.xp);
+  const pct = Math.round((cur/target)*100);
+  return `
+  <div class="branch" style="--branch:${b.color}">
+    <div class="branch-top">
+      <span class="branch-icon">${branchIconHtml(b)}</span>
+      <h2>${b.label}</h2>
+      <div class="level-badge">${level}</div>
+      <button class="branch-del" title="Удалить ветвь" onclick="removeBranch('${id}')">✕</button>
+    </div>
+    <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+    <div class="bar-caption">${cur} / ${target} XP до следующего уровня</div>
+    ${b.hasModules ? modulesBlockHtml() : ''}
+  </div>`;
+}
+
+function branchesTabHtml(){
+  return `
+    ${state.branchOrder.map(id=>branchCardHtml(id)).join('')}
+    <div class="panel add-branch-panel">
+      <h2>Новая ветвь</h2>
+      <form class="form-stack" onsubmit="event.preventDefault(); const f=this; addBranch(f.bname.value, f.bcolor.value, f.bicon.value); f.reset();">
+        <div class="row-inline">
+          <input type="text" name="bname" placeholder="Название ветви" required />
+          <input type="text" name="bicon" placeholder="✨" maxlength="4" style="width:60px;" />
+          <input type="color" name="bcolor" value="#9B6BD6" />
+        </div>
+        <button type="submit">+ Добавить ветвь</button>
+      </form>
+    </div>`;
+}
+
+function shopTabHtml(){
+  return `
+  <div class="panel">
+    <h2>Лавка наград</h2>
+    <p class="hint">Меняй Адамант на призы. Стоимость можно менять под себя.</p>
+    ${state.shop.map(item => `
+      <div class="shop-item">
+        <span class="name">${item.name}</span>
+        <span class="cost">${item.cost}${CURRENCY_SYMBOL}</span>
+        <button ${state.currency < item.cost ? 'disabled' : ''} onclick="buyItem(${item.id})">Обменять</button>
+        <button class="del" title="Удалить" onclick="removeReward(${item.id})">✕</button>
+      </div>`).join('')}
+    <form class="form-stack" onsubmit="event.preventDefault(); addReward(this.rname.value, Number(this.rcost.value)); this.reset();">
+      <div class="two-col">
+        <input type="text" name="rname" placeholder="Своя награда" required />
+        <input type="number" name="rcost" placeholder="Цена" min="1" required />
+      </div>
+      <button type="submit">Добавить награду</button>
+    </form>
+  </div>`;
+}
+
+function achievementsTabHtml(){
+  const unlockedIds = new Set(state.achievements.map(a=>a.id));
+  const customs = state.achievements.filter(a=>a.id.startsWith('custom-'));
+  return `
+  <div class="panel">
+    <h2>Достижения</h2>
+    <p class="hint">Открываются сами за особые успехи — или награди своим, с названием и описанием.</p>
+    <div class="ach-grid">
+      ${ACHIEVEMENT_CATALOG.map(def=>{
+        const on = unlockedIds.has(def.id);
+        return `<div class="ach-badge ${on?'unlocked':'locked'}">
+          <div class="trophy">${on?'🏆':'🔒'}</div>
+          <div class="aname">${def.name}</div>
+          <div class="adesc">${def.desc}</div>
+          ${on?`<div class="axp">+${def.xp} XP · +${def.adamant}${CURRENCY_SYMBOL}</div>`:''}
+        </div>`;
+      }).join('')}
+      ${customs.map(a=>`
+        <div class="ach-badge unlocked">
+          <div class="trophy">🏆</div>
+          <div class="aname">${a.name}</div>
+          ${a.desc?`<div class="adesc">${a.desc}</div>`:''}
+          <div class="axp">+${a.xp} XP · +${a.adamant}${CURRENCY_SYMBOL}</div>
+        </div>`).join('')}
+    </div>
+    <form class="form-stack" onsubmit="event.preventDefault(); const f=this; addCustomAchievement(f.aname.value, f.adesc.value, f.axp.value, f.aadamant.value); f.reset();">
+      <input type="text" name="aname" placeholder="Название" required />
+      <input type="text" name="adesc" placeholder="Описание (необязательно)" />
+      <div class="two-col">
+        <input type="number" name="axp" placeholder="XP" min="0" value="20" required />
+        <input type="number" name="aadamant" placeholder="Адамант" min="0" value="20" required />
+      </div>
+      <button type="submit">Наградить</button>
+    </form>
+  </div>`;
+}
+
+function journalBlockHtml(){
+  if(state.log.length === 0) return `<div class="panel"><h2>Журнал приключений</h2><p class="empty">Здесь появятся первые победы.</p></div>`;
+  return `<div class="panel">
+    <h2>Журнал приключений</h2>
+    <ul class="journal-list">
+      ${state.log.map(e => `
+        <li><span>${e.text}</span><span class="delta">${e.xpDelta?((e.xpDelta>0?'+':'')+e.xpDelta+' XP'):''} ${e.currencyDelta?((e.currencyDelta>0?'+':'')+e.currencyDelta+CURRENCY_SYMBOL):''}</span></li>`).join('')}
+    </ul>
+  </div>`;
+}
+
+function journalTabHtml(){
+  return `
+    ${journalBlockHtml()}
+    <div class="panel">
+      <h2>Резервная копия</h2>
+      <p class="hint">Сохрани файл с прогрессом и загрузи его на другом устройстве или в другом браузере.</p>
+      <div class="backup-actions">
+        <button onclick="exportBackup()">💾 Сохранить копию</button>
+        <button onclick="triggerImport()">📂 Загрузить копию</button>
+        <input type="file" id="import-file-input" accept="application/json" style="display:none" onchange="handleImportFile(this)" />
+      </div>
+      <p id="backup-status" class="backup-status"></p>
+    </div>
+    <footer><button onclick="resetAll()">Сбросить весь прогресс</button></footer>`;
+}
+
+function tabContentHtml(){
+  switch(activeTab){
+    case 'quests': return questsTabHtml();
+    case 'branches': return branchesTabHtml();
+    case 'shop': return shopTabHtml();
+    case 'achievements': return achievementsTabHtml();
+    case 'journal': return journalTabHtml();
+    default: return overviewTabHtml();
+  }
+}
+
+function render(){
+  document.getElementById('app').innerHTML = `
+    <div id="save-indicator" class="save-indicator"></div>
+    <div class="hero">
+      <span class="emblem">${iconEmblem()}</span>
+      <div>
+        <h1>Карта прокачки</h1>
+        <p>Выполняй квесты, получай XP и Адамант, расти рангом, открывай награды.</p>
+      </div>
+    </div>
+    ${tabBarHtml()}
+    <div class="tab-content">${tabContentHtml()}</div>
+  `;
+  updateSaveIndicator();
+  updateBackupStatus();
+}
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
+
+loadState();
+</script>
+</body>
+</html>
